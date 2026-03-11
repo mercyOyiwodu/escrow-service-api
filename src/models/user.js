@@ -22,10 +22,26 @@ const userSchema = new mongoose.Schema({
   allowedIPs: [{
     type: String
   }],
+  otp: {
+    type: String
+  },
+  otpExpires: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
+
+// Static method to find user by email
+userSchema.statics.findUserByEmail = function(email) {
+  return this.findOne({ email });
+};
+
+// Static method to find user by ID
+userSchema.statics.findById = function(id) {
+  return this.findOne({ _id: id });
+};
 
 module.exports = mongoose.model('User', userSchema);

@@ -1,4 +1,4 @@
-const User = require('./models/user'); 
+const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 
 
@@ -17,7 +17,7 @@ exports.authenticate = async (req, res, next) => {
             })
         }
         const decodedToken = jwt.verify(token, process.env.JWT_SECRET)
-        const user = await userModel.findById(decodedToken.user)
+        const user = await User.findById(decodedToken.userId)
 
         if (!user) {
             return res.status(400).json({
@@ -59,7 +59,7 @@ exports.apiKeyAuth = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid API key' });
     }
 
-    if (!user.allowedIPs.includes(req.ip)) {
+    if (!user.allowedIPs.includes(req.ip) && req.ip !== '127.0.0.1' && req.ip !== '::1') {
       return res.status(403).json({ error: 'IP not allowed' });
     }
 

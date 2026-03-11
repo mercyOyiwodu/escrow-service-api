@@ -1,9 +1,10 @@
 const userModel = require('../models/user');
-const { sendWelcomeEmail } = require('../utils/sendmail');
+const { sendWelcomeEmail, sendOTPEmail } = require('../utils/sendmail');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { validate } = require('../validation/utilites');
-const { registerUserSchema, loginUserSchema } = require('../validation/user');
+const { registerUserSchema, loginUserSchema, forgotPasswordSchema, resetPasswordSchema } = require('../validation/user');
+const crypto = require('crypto');
 require(`dotenv`).config();
 
 exports.registerUser = async (req, res) => {
@@ -51,7 +52,7 @@ exports.loginUser = async (req, res) => {
         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
         res.status(200).json({ message: "Login successful", user, token });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ error: error.details ? error.details[0].message : error.message });
     }
 };
 
@@ -105,4 +106,60 @@ exports.updateUserProfile = async (req, res) => {
     } catch (error) {
         res.status(400).json({ error: error.message });
     } 
+};
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const validatedData = await validate(req.body, forgotPasswordSchema);
+        const { email } = validatedData;
+        const normalizedEmail = email.toLowerCase();
+
+        const user = await userModel.findUserByEmail(normalizedEmail);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        user.otp = otp;
+        user.otpExpires = otpExpires;
+        await user.save();
+
+       
+        await sendOTPEmail( normalizedEmail, otp);
+
+        res.status(200).json({ message: "OTP sent to your email" });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const validatedData = await validate(req.body, resetPasswordSchema);
+        const { email, otp, newPassword } = validatedData;
+        const normalizedEmail = email.toLowerCase();
+
+        const user = await userModel.findUserByEmail(normalizedEmail);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.otp !== otp || user.otpExpires < new Date()) {
+            return res.status(400).json({ message: "Invalid or expired OTP" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        user.password = hashedPassword;
+        user.otp = undefined;
+        user.otpExpires = undefined;
+        await user.save();
+
+        res.status(200).json({ message: "Password reset successfully" });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
 };

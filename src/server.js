@@ -1,9 +1,8 @@
 require('dotenv').config();
-const express = require('express');
-require('./app')
-const port = process.env.PORT || 3000
-const app = express();
+const app = require('./app');
+const port = process.env.PORT || 3000;
 
+require('./cron/autoRelease');
 
 app.get('/health', (req, res) => {
   res.json({ status: "ok" });
