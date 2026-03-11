@@ -48,29 +48,29 @@ exports.authenticate = async (req, res, next) => {
 
 
 exports.apiKeyAuth = async (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey) {
-    return res.status(401).json({ error: 'API key required' });
-  }
-
-  try {
-    const user = await User.findOne({ apiKey });
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid API key' });
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+        return res.status(401).json({ error: 'API key required' });
     }
 
-    if (!user.allowedIPs.includes(req.ip) && req.ip !== '127.0.0.1' && req.ip !== '::1') {
-      return res.status(403).json({ error: 'IP not allowed' });
-    }
+    try {
+        const user = await User.findOne({ apiKey });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid API key' });
+        }
 
-    req.user = user; 
-    next();
-  } catch (error) {
-    console.log(error);
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(400).json({ error: 'Session timeout : Please Login To Continue' });
+        if (!user.allowedIPs.includes(req.ip) && req.ip !== '127.0.0.1' && req.ip !== '::1') {
+            return res.status(403).json({ error: 'IP not allowed' });
+        }
+
+        req.user = user;
+        next();
+    } catch (error) {
+        console.log(error);
+        if (error instanceof jwt.JsonWebTokenError) {
+            return res.status(400).json({ error: 'Session timeout : Please Login To Continue' });
+        }
+        res.status(500).json({ error: 'Server error' });
     }
-    res.status(500).json({ error: 'Server error' });
-  }
 };
 

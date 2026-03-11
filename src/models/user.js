@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
+
+const generateApiKey = () => {
+  return 'esc-' + crypto.randomBytes(16).toString('hex');
+};
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -17,7 +21,7 @@ const userSchema = new mongoose.Schema({
   },
   apiKey: {
     type: String,
-    default: uuidv4
+    default: generateApiKey
   },
   allowedIPs: [{
     type: String

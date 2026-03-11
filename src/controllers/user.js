@@ -1,5 +1,6 @@
 const userModel = require('../models/user');
 const { sendWelcomeEmail, sendOTPEmail } = require('../utils/sendmail');
+const { createTransporter } = require('../utils/emailTransporter');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { validate } = require('../validation/utilites');
@@ -25,7 +26,10 @@ exports.registerUser = async (req, res) => {
             email: normalizedEmail,
             password: hashedPassword,
         });
-        sendWelcomeEmail(normalizedEmail, name);
+
+        const transporter = createTransporter();
+        sendWelcomeEmail(transporter, normalizedEmail, name);
+
         res.status(201).json({
             message: "User registered successfully", newUser
         });
@@ -62,7 +66,7 @@ exports.getUserProfile = async (req, res) => {
         const user = await userModel.findById(userId).select('-password');
         if (!user) {
             return res.status(404).json({ error: "User not found" });
-        }   
+        }
         res.status(200).json({ user });
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -71,7 +75,7 @@ exports.getUserProfile = async (req, res) => {
 
 exports.addAllowedIP = async (req, res) => {
     try {
-        const userId = req.user.userId; 
+        const userId = req.user.userId;
         const { ip } = req.body;
         if (!ip) {
             return res.status(400).json({ error: "IP address is required" });
@@ -79,7 +83,7 @@ exports.addAllowedIP = async (req, res) => {
         const user = await userModel.findById(userId);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
-        }   
+        }
         if (user.allowedIPs.includes(ip)) {
             return res.status(400).json({ error: "IP address already allowed" });
         }
@@ -93,19 +97,19 @@ exports.addAllowedIP = async (req, res) => {
 
 exports.updateUserProfile = async (req, res) => {
     try {
-        const userId = req.user.userId; 
+        const userId = req.user.userId;
         const { name, allowedIPs } = req.body;
         const user = await userModel.findById(userId);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
-        }   
+        }
         if (name) user.name = name;
         if (allowedIPs) user.allowedIPs = allowedIPs;
         await user.save();
         res.status(200).json({ message: "Profile updated successfully", user });
     } catch (error) {
         res.status(400).json({ error: error.message });
-    } 
+    }
 };
 
 exports.forgotPassword = async (req, res) => {
@@ -126,8 +130,9 @@ exports.forgotPassword = async (req, res) => {
         user.otpExpires = otpExpires;
         await user.save();
 
-       
-        await sendOTPEmail( normalizedEmail, otp);
+        // Send OTP email
+        const transporter = createTransporter();
+        await sendOTPEmail(transporter, normalizedEmail, otp);
 
         res.status(200).json({ message: "OTP sent to your email" });
     } catch (error) {
